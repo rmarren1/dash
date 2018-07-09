@@ -2,6 +2,7 @@ import collections
 import copy
 import os
 import inspect
+import yaml
 
 
 def is_number(s):
@@ -49,6 +50,19 @@ def _explicitize_args(func):
         )
         wrapper.__signature__ = new_sig
     return wrapper
+
+
+def _convert_js_arg(arg, arg_type):
+    arg_type_name = arg_type.get('name', None)
+    if (arg_type_name == 'bool' or
+            arg_type_name == 'custom' and
+            arg_type.get('raw', None) == 'PropTypes.bool'):
+        return arg == 'true'
+    elif arg_type_name == 'object' or arg_type_name == 'shape':
+        return str(yaml.load(arg.replace('null', 'None')))
+    elif arg_type_name == 'null':
+        return None
+    return arg
 
 
 class Component(collections.MutableMapping):
@@ -234,6 +248,7 @@ class Component(collections.MutableMapping):
 
 # pylint: disable=unused-argument
 def generate_class_string(typename, props, description, namespace):
+    # pylint: disable=too-many-locals
     """
     Dynamically generate class strings to have nicely formatted docstrings,
     keyword arguments, and repr
@@ -284,11 +299,12 @@ def generate_class_string(typename, props, description, namespace):
 
         _explicit_args = kwargs.pop('_explicit_args')
         _locals = locals()
-        _locals.update(kwargs)  # For wildcard attrs
-        args = {{k: _locals[k] for k in _explicit_args if k != 'children'}}
+        args = {{k: _locals[k] for k in self._prop_names
+                 if k != 'children' and not k.endswith("-*")}}
+        args.update(kwargs)
 
         for k in {required_args}:
-            if k not in args:
+            if k not in _explicit_args:
                 raise TypeError(
                     'Required argument `' + k + '` was not specified.')
         super({typename}, self).__init__({argtext})
@@ -331,18 +347,22 @@ def generate_class_string(typename, props, description, namespace):
 
     # pylint: disable=unused-variable
     events = '[' + ', '.join(parse_events(props)) + ']'
-    prop_keys = list(props.keys())
+    exclude_children = False
     if 'children' in props:
-        prop_keys.remove('children')
+        exclude_children = True
         default_argtext = "children=None, "
         # pylint: disable=unused-variable
         argtext = 'children=children, **args'
     else:
         default_argtext = ""
         argtext = '**args'
-    default_argtext += ", ".join(
-        ['{:s}=None'.format(p) for p in prop_keys if not p.endswith("-*")]
-    )
+    default_argtext += ", ".join([
+        '{:s}={}'.format(
+            p,
+            _convert_js_arg(v['defaultValue']['value'], v['type'])
+            if 'defaultValue' in v else None
+        ) for p, v in props.items()
+        if not (p.endswith("-*") or (exclude_children and p == "children"))])
 
     required_args = required_props(props)
     return c.format(**locals())

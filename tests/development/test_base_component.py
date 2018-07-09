@@ -12,7 +12,6 @@ from dash.development.base_component import (
     generate_class_string,
     generate_class_file,
     Component,
-    _explicitize_args,
     js_to_py_type,
     create_docstring,
     parse_events
@@ -592,32 +591,77 @@ class TestGenerateClass(unittest.TestCase):
     def test_to_plotly_json(self):
         c = self.ComponentClass()
         self.assertEqual(c.to_plotly_json(), {
-            'namespace': 'TableComponents',
-            'type': 'Table',
             'props': {
-                'children': None
-            }
+                'children': None,
+                'optionalArray': None,
+                'optionalBool': None,
+                'optionalNumber': 42,
+                'optionalObject': None,
+                'optionalString': 'hello world',
+                'optionalNode': None,
+                'optionalElement': None,
+                'optionalEnum': None,
+                'optionalUnion': None,
+                'optionalArrayOf': None,
+                'optionalObjectOf': None,
+                'optionalObjectWithShapeAndNestedDescription': None,
+                'optionalAny': None,
+                'customProp': None,
+                'customArrayProp': None,
+                'id': None
+            },
+            'type': 'Table',
+            'namespace': 'TableComponents'
         })
 
         c = self.ComponentClass(id='my-id')
         self.assertEqual(c.to_plotly_json(), {
-            'namespace': 'TableComponents',
-            'type': 'Table',
             'props': {
                 'children': None,
+                'optionalArray': None,
+                'optionalBool': None,
+                'optionalNumber': 42,
+                'optionalObject': None,
+                'optionalString': 'hello world',
+                'optionalNode': None,
+                'optionalElement': None,
+                'optionalEnum': None,
+                'optionalUnion': None,
+                'optionalArrayOf': None,
+                'optionalObjectOf': None,
+                'optionalObjectWithShapeAndNestedDescription': None,
+                'optionalAny': None,
+                'customProp': None,
+                'customArrayProp': None,
                 'id': 'my-id'
-            }
+            },
+            'type': 'Table',
+            'namespace': 'TableComponents'
         })
 
         c = self.ComponentClass(id='my-id', optionalArray=None)
         self.assertEqual(c.to_plotly_json(), {
-            'namespace': 'TableComponents',
-            'type': 'Table',
             'props': {
                 'children': None,
-                'id': 'my-id',
-                'optionalArray': None
-            }
+                'optionalArray': None,
+                'optionalBool': None,
+                'optionalNumber': 42,
+                'optionalObject': None,
+                'optionalString': 'hello world',
+                'optionalNode': None,
+                'optionalElement': None,
+                'optionalEnum': None,
+                'optionalUnion': None,
+                'optionalArrayOf': None,
+                'optionalObjectOf': None,
+                'optionalObjectWithShapeAndNestedDescription': None,
+                'optionalAny': None,
+                'customProp': None,
+                'customArrayProp': None,
+                'id': 'my-id'
+            },
+            'type': 'Table',
+            'namespace': 'TableComponents'
         })
 
     def test_arguments_become_attributes(self):
@@ -635,18 +679,18 @@ class TestGenerateClass(unittest.TestCase):
         c2 = self.ComponentClass(children='text children')
         self.assertEqual(
             repr(c1),
-            "Table('text children')"
+            "Table(children='text children', optionalNumber=42, optionalString='hello world')"
         )
         self.assertEqual(
             repr(c2),
-            "Table('text children')"
+            "Table(children='text children', optionalNumber=42, optionalString='hello world')"
         )
 
     def test_repr_single_non_default_argument(self):
         c = self.ComponentClass(id='my-id')
         self.assertEqual(
             repr(c),
-            "Table(id='my-id')"
+            "Table(optionalNumber=42, optionalString='hello world', id='my-id')"
         )
 
     def test_repr_multiple_arguments(self):
@@ -655,7 +699,7 @@ class TestGenerateClass(unittest.TestCase):
         c = self.ComponentClass(id='my id', optionalArray=[1, 2, 3])
         self.assertEqual(
             repr(c),
-            "Table(optionalArray=[1, 2, 3], id='my id')"
+            "Table(optionalArray=[1, 2, 3], optionalNumber=42, optionalString='hello world', id='my id')"
         )
 
     def test_repr_nested_arguments(self):
@@ -664,18 +708,20 @@ class TestGenerateClass(unittest.TestCase):
         c3 = self.ComponentClass(children=c2)
         self.assertEqual(
             repr(c3),
-            "Table(Table(children=Table(id='1'), id='2'))"
+            "Table(children=Table(children=Table(optionalNumber=42, optionalString='hello world', id='1'), optionalNumber=42, optionalString='hello world', id='2'), optionalNumber=42, optionalString='hello world')"
         )
 
     def test_repr_with_wildcards(self):
         c = self.ComponentClass(id='1', **{"data-one": "one",
                                             "aria-two": "two"})
-        data_first = "Table(id='1', data-one='one', aria-two='two')"
-        aria_first = "Table(id='1', aria-two='two', data-one='one')"
-        repr_string = repr(c)
-        if not (repr_string == data_first or repr_string == aria_first):
-            raise Exception("%s\nDoes not equal\n%s\nor\n%s" %
-                            (repr_string, data_first, aria_first))
+        aria_first = "Table(optionalNumber=42, optionalString='hello world', id='1', aria-two='two', data-one='one')"
+        data_first = "Table(optionalNumber=42, optionalString='hello world', id='1', data-one='one', aria-two='two')"
+
+        # Check both because the keyword arguments dont have distinct order
+        test_string = repr(c)
+        if not (test_string == aria_first or test_string == data_first):
+            raise Exception("{:s} \n not equal to {:s} \n or \n {:s}"
+                            .format(test_string, aria_first, data_first))
 
     def test_docstring(self):
         assert_docstring(self.assertEqual, self.ComponentClass.__doc__)
@@ -728,8 +774,8 @@ class TestGenerateClass(unittest.TestCase):
         )
         self.assertEqual(
             inspect.getargspec(__init__func).defaults,
-            (None, None, None, None, None,
-             None, None, None, None, None,
+            (None, None, None, None, 42,
+             None, 'hello world', None, None, None,
              None, None, None, None, None,
              None, None, None,
              None, None, None) if hasattr(inspect, 'signature') else None

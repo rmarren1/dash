@@ -81,7 +81,6 @@ def generate_classes(namespace, metadata_path='lib/metadata.json'):
     # Iterate over each property name (which is a path to the component)
     for componentPath in data:
         componentData = data[componentPath]
-
         # Extract component name from path
         # e.g. src/components/MyControl.react.js
         # TODO Make more robust - some folks will write .jsx and others
