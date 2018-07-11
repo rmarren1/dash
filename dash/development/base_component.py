@@ -60,9 +60,16 @@ def _convert_js_arg(arg, arg_type):
         return arg == 'true'
     elif arg_type_name == 'object' or arg_type_name == 'shape':
         return str(yaml.load(arg.replace('null', 'None')))
+    elif ((arg_type_name == 'string') or (arg_type_name == 'custom') and
+          (arg_type.get('raw', None) == 'PropTypes.string')):
+        return arg
+    elif ((arg_type_name == 'number') or (arg_type_name == 'integer') or
+          (arg_type_name == 'custom') and
+          (arg_type.get('raw', None) == 'PropTypes.number')):
+        return arg
     elif arg_type_name == 'null':
         return None
-    return arg
+    return '"UnparsableJavascriptVariable"'
 
 
 class Component(collections.MutableMapping):
